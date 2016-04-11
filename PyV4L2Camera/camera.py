@@ -60,7 +60,7 @@ class Camera:
             lib.memset(buf, 0, ffi.sizeof(buf))
             buf.type = lib.V4L2_BUF_TYPE_VIDEO_CAPTURE
             buf.memory = lib.V4L2_MEMORY_MMAP
-            buf.index = 0
+            buf.index = buf_index
 
             if -1 == lib.xioctl(fd, lib.VIDIOC_QUERYBUF, buf):
                 raise RuntimeError('Querying buffer failed')
