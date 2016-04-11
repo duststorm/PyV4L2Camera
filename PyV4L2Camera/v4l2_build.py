@@ -36,8 +36,8 @@ ffi.cdef('''
 
     void FD_ZERO(fd_set *set);
     void FD_SET(int fd, fd_set *set);
-    static int xselect(int nfds, fd_set *readfds, fd_set *writefds,
-                       fd_set *exceptfds, struct timeval *timeout);
+    int select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
+               struct timeval *timeout);
 
     struct v4l2_pix_format {
         uint32_t   width;
@@ -117,16 +117,6 @@ ffi.set_source('_v4l2', '''
         int r;
         do {
             r = v4l2_ioctl(fd, request, arg);
-        }
-        while (-1 == r && EINTR == errno);
-        return r;
-    }
-
-    static int xselect(int nfds, fd_set *readfds, fd_set *writefds,
-                       fd_set *exceptfds, struct timeval *timeout) {
-        int r;
-        do {
-            r = select(nfds, readfds, writefds, exceptfds, timeout);
         }
         while (-1 == r && EINTR == errno);
         return r;

@@ -1,5 +1,6 @@
 import os
 
+import errno
 from ._v4l2 import ffi, lib
 
 
@@ -89,7 +90,16 @@ class Camera:
 
         tv.tv_sec = 2
 
-        if -1 == lib.xselect(fd + 1, fds, ffi.NULL, ffi.NULL, tv):
+        r = lib.select(fd + 1, fds, ffi.NULL, ffi.NULL, tv)
+        while -1 == r and ffi.errno == errno.EINTR:
+            lib.FD_ZERO(fds)
+            lib.FD_SET(fd, fds)
+
+            tv.tv_sec = 2
+
+            r = lib.select(fd + 1, fds, ffi.NULL, ffi.NULL, tv)
+
+        if -1 == r:
             raise RuntimeError('Waiting for frame failed')
 
         lib.memset(buf, 0, ffi.sizeof(buf))
