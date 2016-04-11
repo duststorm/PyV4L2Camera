@@ -1,6 +1,6 @@
+import errno
 import os
 
-import errno
 from ._v4l2 import ffi, lib
 
 
@@ -36,48 +36,54 @@ class Camera:
                                   self._conv_dest_size)
 
         self._buf = ffi.new('struct v4l2_buffer *')
-        self._bufptr = self._initialize_buffer()
+        self._buffers = self._initialize_buffers()
 
         if -1 == lib.xioctl(fd, lib.VIDIOC_STREAMON,
                             ffi.new_handle(self._buf.type)):
             raise RuntimeError('Starting capture failed')
 
-    def _initialize_buffer(self):
+    def _initialize_buffers(self):
         buf = self._buf
         fd = self._fd
 
+        lib.memset(buf, 0, ffi.sizeof(buf))
         req = ffi.new('struct v4l2_requestbuffers *')
-        req.count = 1
+        req.count = 4
         req.type = lib.V4L2_BUF_TYPE_VIDEO_CAPTURE
         req.memory = lib.V4L2_MEMORY_MMAP
 
         if -1 == lib.xioctl(fd, lib.VIDIOC_REQBUFS, req):
             raise RuntimeError('Requesting buffer failed')
 
-        lib.memset(buf, 0, ffi.sizeof(buf))
-        buf.type = lib.V4L2_BUF_TYPE_VIDEO_CAPTURE
-        buf.memory = lib.V4L2_MEMORY_MMAP
-        buf.index = 0
+        buffers = []
+        for buf_index in range(req.count):
+            lib.memset(buf, 0, ffi.sizeof(buf))
+            buf.type = lib.V4L2_BUF_TYPE_VIDEO_CAPTURE
+            buf.memory = lib.V4L2_MEMORY_MMAP
+            buf.index = 0
 
-        if -1 == lib.xioctl(fd, lib.VIDIOC_QUERYBUF, buf):
-            raise RuntimeError('Querying buffer failed')
+            if -1 == lib.xioctl(fd, lib.VIDIOC_QUERYBUF, buf):
+                raise RuntimeError('Querying buffer failed')
 
-        bufptr = lib.v4l2_mmap(ffi.NULL, buf.length,
-                               lib.PROT_READ | lib.PROT_WRITE, lib.MAP_SHARED,
-                               fd, buf.m.offset)
+            bufptr = lib.v4l2_mmap(ffi.NULL, buf.length,
+                                   lib.PROT_READ | lib.PROT_WRITE,
+                                   lib.MAP_SHARED, fd, buf.m.offset)
 
-        if bufptr == ffi.cast('void *', -1):
-            raise RuntimeError('MMAP failed: {}'.format(os.strerror(ffi.errno)))
+            if bufptr == ffi.cast('void *', -1):
+                raise RuntimeError('MMAP failed: {}'.format(
+                    os.strerror(ffi.errno)))
 
-        lib.memset(buf, 0, ffi.sizeof(buf))
-        buf.type = lib.V4L2_BUF_TYPE_VIDEO_CAPTURE
-        buf.memory = lib.V4L2_MEMORY_MMAP
-        buf.index = 0
+            buffers.append((bufptr, buf.length))
 
-        if -1 == lib.xioctl(fd, lib.VIDIOC_QBUF, buf):
-            raise RuntimeError('Exchanging buffer with device failed')
+            lib.memset(buf, 0, ffi.sizeof(buf))
+            buf.type = lib.V4L2_BUF_TYPE_VIDEO_CAPTURE
+            buf.memory = lib.V4L2_MEMORY_MMAP
+            buf.index = buf_index
 
-        return bufptr
+            if -1 == lib.xioctl(fd, lib.VIDIOC_QBUF, buf):
+                raise RuntimeError('Exchanging buffer with device failed')
+
+        return buffers
 
     def get_frame(self):
         fd = self._fd
@@ -111,7 +117,8 @@ class Camera:
 
         if -1 == lib.v4lconvert_convert(self._v4lconvert_data,
                                         self._fmt, self._dest_fmt,
-                                        self._bufptr, buf.bytesused,
+                                        self._buffers[buf.index][0],
+                                        buf.bytesused,
                                         self._conv_dest,
                                         self._conv_dest_size):
             raise RuntimeError('Conversion failed')
@@ -124,5 +131,8 @@ class Camera:
     def __del__(self):
         lib.xioctl(self._fd, lib.VIDIOC_STREAMOFF,
                    ffi.new_handle(lib.V4L2_BUF_TYPE_VIDEO_CAPTURE))
-        lib.v4l2_munmap(self._bufptr, self._buf.length)
+
+        for buffer in self._buffers:
+            lib.v4l2_munmap(buffer[0], buffer[1])
+
         lib.v4l2_close(self._fd)
