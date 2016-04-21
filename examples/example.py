@@ -9,3 +9,5 @@ for _ in range(3):
     im = Image.frombytes('RGB', (camera.width, camera.height), frame, 'raw',
                          'RGB')
     im.show()
+
+camera.close()
