@@ -17,9 +17,13 @@ extensions = [
 setup(
     name='PyV4L2Camera',
     version=__version__,
+    description='Simple, libv4l2 based frame grabber',
+    author='Dominik Pieczyński',
+    author_email='dominik.pieczynski@gmail.com',
+    url='https://gitlab.com/radish/PyV4L2Camera',
     ext_modules=cythonize(extensions),
     extras_require={
         'examples': ['pillow', 'numpy'],
     },
-    packages=find_packages(),
+    packages=find_packages()
 )
