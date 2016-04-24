@@ -21,6 +21,7 @@ setup(
     author='Dominik Pieczyński',
     author_email='dominik.pieczynski@gmail.com',
     url='https://gitlab.com/radish/PyV4L2Camera',
+    license='GNU Lesser General Public License v3 (LGPLv3)',
     ext_modules=cythonize(extensions),
     extras_require={
         'examples': ['pillow', 'numpy'],
