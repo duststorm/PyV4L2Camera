@@ -4,6 +4,8 @@ from Cython.Build import cythonize
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 
+from PyV4L2Camera import __version__
+
 extensions = [
     Extension(
         'PyV4L2Camera/camera',
@@ -14,12 +16,10 @@ extensions = [
 
 setup(
     name='PyV4L2Camera',
-    version='0.1.dev0',
-    setup_requires=['Cython>=0.24'],
+    version=__version__,
     ext_modules=cythonize(extensions),
-    install_requires=['Cython>=0.24'],
     extras_require={
-        'examples': ['pillow'],
+        'examples': ['pillow', 'numpy'],
     },
     packages=find_packages(),
 )

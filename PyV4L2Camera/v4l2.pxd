@@ -78,6 +78,7 @@ cdef extern from 'libv4l2.h':
                     __s64 offset)
     int v4l2_munmap(void *_start, size_t length)
 
+cdef extern from 'libv4lconvert.h':
     v4lconvert_data *v4lconvert_create(int fd)
     int v4lconvert_convert(v4lconvert_data *data,
                            const v4l2_format *src_fmt,
