@@ -101,7 +101,7 @@ cdef class Camera:
 
         return 0
 
-    def get_frame(self):
+    cpdef bytes get_frame(self):
         FD_ZERO(&self.fds)
         FD_SET(self.fd, &self.fds)
 
