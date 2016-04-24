@@ -6,6 +6,7 @@ from posix.select cimport fd_set, timeval, FD_ZERO, FD_SET, select
 from posix.fcntl cimport O_RDWR
 from posix.mman cimport PROT_READ, PROT_WRITE, MAP_SHARED
 
+from PyV4L2Camera.exceptions import CameraError
 
 cdef class Camera:
     cdef int fd
@@ -31,13 +32,13 @@ cdef class Camera:
 
         self.fd = v4l2_open(device_path, O_RDWR)
         if -1 == self.fd:
-            raise RuntimeError('Error opening device {}'.format(device_path))
+            raise CameraError('Error opening device {}'.format(device_path))
 
         memset(&self.fmt, 0, sizeof(self.fmt))
         self.fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
 
         if -1 == xioctl(self.fd, VIDIOC_G_FMT, &self.fmt):
-            raise RuntimeError('Getting format failed')
+            raise CameraError('Getting format failed')
 
         self.dest_fmt.type = self.fmt.type
         self.dest_fmt.fmt.pix.width = self.fmt.fmt.pix.width
@@ -50,7 +51,7 @@ cdef class Camera:
         self.conv_dest_size = self.width * self.height * 3
         self.conv_dest = <unsigned char *>malloc(self.conv_dest_size)
         if self.conv_dest == NULL:
-            raise RuntimeError('Allocating memory for converted data failed')
+            raise CameraError('Allocating memory for converted data failed')
         self.convert_data = v4lconvert_create(self.fd)
 
         memset(&self.buf_req, 0, sizeof(self.buf_req))
@@ -59,16 +60,16 @@ cdef class Camera:
         self.buf_req.memory = V4L2_MEMORY_MMAP
 
         if -1 == xioctl(self.fd, VIDIOC_REQBUFS, &self.buf_req):
-            raise RuntimeError('Requesting buffer failed')
+            raise CameraError('Requesting buffer failed')
 
         self.buffers = <buffer_info *>calloc(self.buf_req.count,
                                              sizeof(self.buffers[0]))
         if self.buffers == NULL:
-            raise RuntimeError('Allocating memory for buffers array failed')
+            raise CameraError('Allocating memory for buffers array failed')
         self.initialize_buffers()
 
         if -1 == xioctl(self.fd, VIDIOC_STREAMON, &self.buf.type):
-            raise RuntimeError('Starting capture failed')
+            raise CameraError('Starting capture failed')
 
     cdef inline int initialize_buffers(self) except -1:
         for buf_index in range(self.buf_req.count):
@@ -78,14 +79,14 @@ cdef class Camera:
             self.buf.index = buf_index
 
             if -1 == xioctl(self.fd, VIDIOC_QUERYBUF, &self.buf):
-                raise RuntimeError('Querying buffer failed')
+                raise CameraError('Querying buffer failed')
 
             bufptr = v4l2_mmap(NULL, self.buf.length,
                                PROT_READ | PROT_WRITE,
                                MAP_SHARED, self.fd, self.buf.m.offset)
 
             if bufptr == <void *>-1:
-                raise RuntimeError('MMAP failed: {}'.format(
+                raise CameraError('MMAP failed: {}'.format(
                     strerror(errno).decode())
                 )
 
@@ -97,7 +98,7 @@ cdef class Camera:
             self.buf.index = buf_index
 
             if -1 == xioctl(self.fd, VIDIOC_QBUF, &self.buf):
-                raise RuntimeError('Exchanging buffer with device failed')
+                raise CameraError('Exchanging buffer with device failed')
 
         return 0
 
@@ -117,14 +118,14 @@ cdef class Camera:
             r = select(self.fd + 1, &self.fds, NULL, NULL, &self.tv)
 
         if -1 == r:
-            raise RuntimeError('Waiting for frame failed')
+            raise CameraError('Waiting for frame failed')
 
         memset(&self.buf, 0, sizeof(self.buf))
         self.buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE
         self.buf.memory = V4L2_MEMORY_MMAP
 
         if -1 == xioctl(self.fd, VIDIOC_DQBUF, &self.buf):
-            raise RuntimeError('Retrieving frame failed')
+            raise CameraError('Retrieving frame failed')
 
         if -1 == v4lconvert_convert(
                 self.convert_data,
@@ -134,10 +135,10 @@ cdef class Camera:
                 self.conv_dest,
                 self.conv_dest_size
         ):
-            raise RuntimeError('Conversion failed')
+            raise CameraError('Conversion failed')
 
         if -1 == xioctl(self.fd, VIDIOC_QBUF, &self.buf):
-            raise RuntimeError('Exchanging buffer with device failed')
+            raise CameraError('Exchanging buffer with device failed')
 
         return self.conv_dest[:self.conv_dest_size]
 
