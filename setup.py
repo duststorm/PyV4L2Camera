@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 
-from Cython.Build import cythonize
+import sys
+
 from setuptools import setup, find_packages
 from setuptools.extension import Extension
 
 from PyV4L2Camera import __version__
 
+USE_CYTHON = '--use-cython' in sys.argv
+
+ext = '.pyx' if USE_CYTHON else '.c'
 extensions = [
     Extension(
         'PyV4L2Camera/camera',
-        ['PyV4L2Camera/camera.pyx'],
+        ['PyV4L2Camera/camera' + ext],
         libraries=['v4l2', ]
     )
 ]
+
+if USE_CYTHON:
+    from Cython.Build import cythonize
+    extensions = cythonize(extensions)
 
 setup(
     name='PyV4L2Camera',
@@ -22,7 +30,7 @@ setup(
     author_email='dominik.pieczynski@gmail.com',
     url='https://gitlab.com/radish/PyV4L2Camera',
     license='GNU Lesser General Public License v3 (LGPLv3)',
-    ext_modules=cythonize(extensions),
+    ext_modules=extensions,
     extras_require={
         'examples': ['pillow', 'numpy'],
     },
