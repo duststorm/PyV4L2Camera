@@ -177,6 +177,51 @@ cdef class Camera:
 
         return controls_list
 
+    cpdef void set_control_value(self, control_id, value):
+        cdef v4l2_queryctrl queryctrl
+        cdef v4l2_control control
+
+        memset(&queryctrl, 0, sizeof(queryctrl))
+        queryctrl.id = control_id.value
+
+        if -1 == xioctl(self.fd, VIDIOC_QUERYCTRL, &queryctrl):
+            if errno != EINVAL:
+                raise CameraError('Querying control')
+            else:
+                raise AttributeError('Control is not supported')
+        elif queryctrl.flags & V4L2_CTRL_FLAG_DISABLED:
+            raise AttributeError('Control is not supported')
+        else:
+            memset(&control, 0, sizeof(control))
+            control.id = control_id.value
+            control.value = value
+
+            if -1 == xioctl(self.fd, VIDIOC_S_CTRL, &control):
+                raise CameraError('Setting control')
+
+    cpdef int get_control_value(self, control_id):
+        cdef v4l2_queryctrl queryctrl
+        cdef v4l2_control control
+
+        memset(&queryctrl, 0, sizeof(queryctrl))
+        queryctrl.id = control_id.value
+
+        if -1 == xioctl(self.fd, VIDIOC_QUERYCTRL, &queryctrl):
+            if errno != EINVAL:
+                raise CameraError('Querying control')
+            else:
+                raise AttributeError('Control is not supported')
+        elif queryctrl.flags & V4L2_CTRL_FLAG_DISABLED:
+            raise AttributeError('Control is not supported')
+        else:
+            memset(&control, 0, sizeof(control))
+            control.id = control_id.value
+
+            if 0 == xioctl(self.fd, VIDIOC_G_CTRL, &control):
+                return control.value
+            else:
+                raise CameraError('Getting control')
+
     cpdef bytes get_frame(self):
         FD_ZERO(&self.fds)
         FD_SET(self.fd, &self.fds)

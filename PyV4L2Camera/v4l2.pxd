@@ -20,6 +20,8 @@ cdef extern from 'linux/videodev2.h':
     enum: VIDIOC_DQBUF
     enum: VIDIOC_QUERYMENU
     enum: VIDIOC_QUERYCTRL
+    enum: VIDIOC_G_CTRL
+    enum: VIDIOC_S_CTRL
     enum: V4L2_CID_BASE
     enum: V4L2_CID_LASTP1
     enum: V4L2_CID_PRIVATE_BASE
@@ -31,6 +33,37 @@ cdef extern from 'linux/videodev2.h':
     enum: V4L2_CTRL_FLAG_UPDATE
     enum: V4L2_CTRL_FLAG_INACTIVE
     enum: V4L2_CTRL_FLAG_WRITE_ONLY
+    
+    enum: V4L2_CID_BRIGHTNESS
+    enum: V4L2_CID_CONTRAST
+    enum: V4L2_CID_SATURATION
+    enum: V4L2_CID_HUE
+    enum: V4L2_CID_AUDIO_VOLUME
+    enum: V4L2_CID_AUDIO_BALANCE
+    enum: V4L2_CID_AUDIO_BASS
+    enum: V4L2_CID_AUDIO_TREBLE
+    enum: V4L2_CID_AUDIO_MUTE
+    enum: V4L2_CID_AUDIO_LOUDNESS
+    enum: V4L2_CID_BLACK_LEVEL
+    enum: V4L2_CID_AUTO_WHITE_BALANCE
+    enum: V4L2_CID_DO_WHITE_BALANCE
+    enum: V4L2_CID_RED_BALANCE
+    enum: V4L2_CID_BLUE_BALANCE
+    enum: V4L2_CID_GAMMA
+    enum: V4L2_CID_WHITENESS
+    enum: V4L2_CID_EXPOSURE
+    enum: V4L2_CID_AUTOGAIN
+    enum: V4L2_CID_GAIN
+    enum: V4L2_CID_HFLIP
+    enum: V4L2_CID_VFLIP
+    enum: V4L2_CID_POWER_LINE_FREQUENCY
+    enum: V4L2_CID_HUE_AUTO
+    enum: V4L2_CID_WHITE_BALANCE_TEMPERATURE
+    enum: V4L2_CID_SHARPNESS
+    enum: V4L2_CID_BACKLIGHT_COMPENSATION
+    enum: V4L2_CID_CHROMA_AGC
+    enum: V4L2_CID_COLOR_KILLER 
+    enum: V4L2_CID_COLORFX
 
     cdef struct v4l2_pix_format:
         __u32   width
@@ -95,10 +128,14 @@ cdef extern from 'linux/videodev2.h':
         __u32	          reserved[2]
 
     cdef struct v4l2_querymenu:
-        __u32	id
-        __u32	index
-        __u8	name[32]
-        __u32	reserved
+        __u32 id
+        __u32 index
+        __u8  name[32]
+        __u32 reserved
+
+    cdef struct v4l2_control:
+        __u32 id
+        __s32 value
 
 cdef extern from 'libv4l2.h':
     enum: V4L2_PIX_FMT_RGB24
