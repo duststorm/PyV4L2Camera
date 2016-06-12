@@ -4,8 +4,12 @@ from PIL import Image
 from PyV4L2Camera.camera import Camera
 
 camera = Camera('/dev/video0', 1920, 1080)
+controls = camera.get_controls()
 
-for _ in range(1):
+for control in controls:
+    print(control.name)
+
+for _ in range(2):
     frame = camera.get_frame()
 
     # Decode the image

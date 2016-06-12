@@ -18,6 +18,19 @@ cdef extern from 'linux/videodev2.h':
     enum: VIDIOC_STREAMOFF
     enum: VIDIOC_QBUF
     enum: VIDIOC_DQBUF
+    enum: VIDIOC_QUERYMENU
+    enum: VIDIOC_QUERYCTRL
+    enum: V4L2_CID_BASE
+    enum: V4L2_CID_LASTP1
+    enum: V4L2_CID_PRIVATE_BASE
+    enum: V4L2_CTRL_FLAG_DISABLED
+
+    enum: V4L2_CTRL_FLAG_DISABLED
+    enum: V4L2_CTRL_FLAG_GRABBED
+    enum: V4L2_CTRL_FLAG_READ_ONLY
+    enum: V4L2_CTRL_FLAG_UPDATE
+    enum: V4L2_CTRL_FLAG_INACTIVE
+    enum: V4L2_CTRL_FLAG_WRITE_ONLY
 
     cdef struct v4l2_pix_format:
         __u32   width
@@ -60,6 +73,32 @@ cdef extern from 'linux/videodev2.h':
         __u32 bytesused
 
         __v4l2_buffer_m m
+
+    cdef enum v4l2_ctrl_type:
+        V4L2_CTRL_TYPE_INTEGER
+        V4L2_CTRL_TYPE_BOOLEAN
+        V4L2_CTRL_TYPE_MENU
+        V4L2_CTRL_TYPE_BUTTON
+        V4L2_CTRL_TYPE_INTEGER64
+        V4L2_CTRL_TYPE_STRING
+        V4L2_CTRL_TYPE_CTRL_CLASS
+
+    cdef struct v4l2_queryctrl:
+        __u32             id
+        v4l2_ctrl_type    type
+        __u8	          name[32]
+        __s32	          minimum
+        __s32	          maximum
+        __s32	          step
+        __s32	          default_value
+        __u32	          flags
+        __u32	          reserved[2]
+
+    cdef struct v4l2_querymenu:
+        __u32	id
+        __u32	index
+        __u8	name[32]
+        __u32	reserved
 
 cdef extern from 'libv4l2.h':
     enum: V4L2_PIX_FMT_RGB24

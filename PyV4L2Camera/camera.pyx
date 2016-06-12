@@ -1,11 +1,12 @@
 from v4l2 cimport *
-from libc.errno cimport errno, EINTR
+from libc.errno cimport errno, EINTR, EINVAL
 from libc.string cimport memset, strerror
 from libc.stdlib cimport malloc, calloc
 from posix.select cimport fd_set, timeval, FD_ZERO, FD_SET, select
 from posix.fcntl cimport O_RDWR
 from posix.mman cimport PROT_READ, PROT_WRITE, MAP_SHARED
 
+from PyV4L2Camera.controls import CameraControl
 from PyV4L2Camera.exceptions import CameraError
 
 cdef class Camera:
@@ -111,6 +112,70 @@ cdef class Camera:
                 raise CameraError('Exchanging buffer with device failed')
 
         return 0
+
+    cdef list enumerate_menu(self, v4l2_queryctrl *queryctrl,
+                             v4l2_querymenu *querymenu):
+        menu = []
+
+        if queryctrl.type == V4L2_CTRL_TYPE_MENU:
+            memset(querymenu, 0, sizeof(querymenu[0]))
+            querymenu.id = queryctrl.id
+
+            for querymenu.index in range(queryctrl.minimum,
+                                         queryctrl.maximum + 1):
+                if 0 == xioctl(self.fd, VIDIOC_QUERYMENU, querymenu):
+                    menu.append(querymenu.name.decode('utf-8'))
+                else:
+                    raise CameraError('Querying controls failed')
+
+        return menu
+
+    cpdef list get_controls(self):
+        controls_list = []
+
+        cdef v4l2_queryctrl queryctrl
+        cdef v4l2_querymenu querymenu
+
+        memset(&queryctrl, 0, sizeof(queryctrl))
+
+        for queryctrl.id in range(V4L2_CID_BASE, V4L2_CID_LASTP1):
+            if 0 == xioctl(self.fd, VIDIOC_QUERYCTRL, &queryctrl):
+                if queryctrl.flags & V4L2_CTRL_FLAG_DISABLED:
+                    continue
+
+                controls_list.append(
+                    CameraControl(queryctrl.id, queryctrl.type,
+                                  queryctrl.name.decode('utf-8'),
+                                  queryctrl.default_value, queryctrl.minimum,
+                                  queryctrl.maximum, queryctrl.step,
+                                  self.enumerate_menu(&queryctrl, &querymenu),
+                                  queryctrl.flags)
+                )
+            elif errno == EINVAL:
+                continue
+            else:
+                raise CameraError('Querying controls failed')
+
+        queryctrl.id = V4L2_CID_PRIVATE_BASE
+        while True:
+            if 0 == xioctl(self.fd, VIDIOC_QUERYCTRL, &queryctrl):
+                if queryctrl.flags & V4L2_CTRL_FLAG_DISABLED:
+                    continue
+
+                controls_list.append(
+                    CameraControl(queryctrl.id, queryctrl.type,
+                                  queryctrl.name.decode('utf-8'),
+                                  queryctrl.default_value, queryctrl.minimum,
+                                  queryctrl.maximum, queryctrl.step,
+                                  self.enumerate_menu(&queryctrl, &querymenu),
+                                  queryctrl.flags)
+                )
+            elif errno == EINVAL:
+                break
+            else:
+                raise CameraError('Querying controls failed')
+
+        return controls_list
 
     cpdef bytes get_frame(self):
         FD_ZERO(&self.fds)
