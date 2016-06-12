@@ -17,6 +17,7 @@ cdef class Camera:
 
     cdef public unsigned int width
     cdef public unsigned int height
+
     cdef unsigned int conv_dest_size
     cdef unsigned char *conv_dest
 
@@ -27,7 +28,8 @@ cdef class Camera:
     cdef timeval tv
     cdef v4lconvert_data *convert_data
 
-    def __cinit__(self, device_path):
+    def __cinit__(self, device_path,
+                  unsigned int width=0, unsigned int height=0):
         device_path = device_path.encode()
 
         self.fd = v4l2_open(device_path, O_RDWR)
@@ -40,13 +42,21 @@ cdef class Camera:
         if -1 == xioctl(self.fd, VIDIOC_G_FMT, &self.fmt):
             raise CameraError('Getting format failed')
 
+        if width and height:
+            self.fmt.fmt.pix.width = width
+            self.fmt.fmt.pix.height = height
+        self.fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24
+
+        if -1 == xioctl(self.fd, VIDIOC_S_FMT, &self.fmt):
+            raise CameraError('Setting format failed')
+
+        self.width = self.fmt.fmt.pix.width
+        self.height = self.fmt.fmt.pix.height
+
         self.dest_fmt.type = self.fmt.type
         self.dest_fmt.fmt.pix.width = self.fmt.fmt.pix.width
         self.dest_fmt.fmt.pix.height = self.fmt.fmt.pix.height
         self.dest_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24
-
-        self.width = self.fmt.fmt.pix.width
-        self.height = self.fmt.fmt.pix.height
 
         self.conv_dest_size = self.width * self.height * 3
         self.conv_dest = <unsigned char *>malloc(self.conv_dest_size)

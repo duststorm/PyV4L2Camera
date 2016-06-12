@@ -3,9 +3,9 @@ from PIL import Image
 
 from PyV4L2Camera.camera import Camera
 
-camera = Camera('/dev/video0')
+camera = Camera('/dev/video0', 1920, 1080)
 
-for _ in range(3):
+for _ in range(1):
     frame = camera.get_frame()
 
     # Decode the image
