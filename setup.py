@@ -7,7 +7,11 @@ from setuptools.extension import Extension
 
 from PyV4L2Camera import __version__
 
-USE_CYTHON = '--use-cython' in sys.argv
+try:
+    sys.argv.remove('--use-cython')
+    USE_CYTHON = True
+except ValueError:
+    USE_CYTHON = False
 
 ext = '.pyx' if USE_CYTHON else '.c'
 extensions = [
