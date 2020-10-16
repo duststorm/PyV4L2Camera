@@ -1,6 +1,6 @@
 from v4l2 cimport *
 from libc.errno cimport errno, EINTR, EINVAL
-from libc.string cimport memset, strerror
+from libc.string cimport memset, strerror, memcpy
 from libc.stdlib cimport malloc, calloc
 from posix.select cimport fd_set, timeval, FD_ZERO, FD_SET, select
 from posix.fcntl cimport O_RDWR
@@ -29,9 +29,12 @@ cdef class Camera:
     cdef timeval tv
     cdef v4lconvert_data *convert_data
 
+    cdef int capture_mjpg
+
     def __cinit__(self, device_path,
-                  unsigned int width=0, unsigned int height=0):
+                  unsigned int width=0, unsigned int height=0, capture_mjpg=False):
         device_path = device_path.encode()
+        self.capture_mjpg = capture_mjpg
 
         self.fd = v4l2_open(device_path, O_RDWR)
         if -1 == self.fd:
@@ -46,7 +49,10 @@ cdef class Camera:
         if width and height:
             self.fmt.fmt.pix.width = width
             self.fmt.fmt.pix.height = height
-        self.fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24
+        if self.capture_mjpg:
+            self.fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG
+        else:
+            self.fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24
 
         if -1 == xioctl(self.fd, VIDIOC_S_FMT, &self.fmt):
             raise CameraError('Setting format failed')
@@ -57,7 +63,10 @@ cdef class Camera:
         self.dest_fmt.type = self.fmt.type
         self.dest_fmt.fmt.pix.width = self.fmt.fmt.pix.width
         self.dest_fmt.fmt.pix.height = self.fmt.fmt.pix.height
-        self.dest_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24
+        if self.capture_mjpg:
+            self.dest_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_MJPEG
+        else:
+            self.dest_fmt.fmt.pix.pixelformat = V4L2_PIX_FMT_RGB24
 
         self.conv_dest_size = self.width * self.height * 3
         self.conv_dest = <unsigned char *>malloc(self.conv_dest_size)
@@ -247,15 +256,19 @@ cdef class Camera:
         if -1 == xioctl(self.fd, VIDIOC_DQBUF, &self.buf):
             raise CameraError('Retrieving frame failed')
 
-        if -1 == v4lconvert_convert(
-                self.convert_data,
-                &self.fmt, &self.dest_fmt,
-                <unsigned char *>self.buffers[self.buf.index].start,
-                self.buf.bytesused,
-                self.conv_dest,
-                self.conv_dest_size
-        ):
-            raise CameraError('Conversion failed')
+        if self.capture_mjpg:
+            self.conv_dest_size = self.buf.bytesused
+            memcpy(self.conv_dest, self.buffers[self.buf.index].start, self.conv_dest_size)
+        else:
+            if -1 == v4lconvert_convert(
+                    self.convert_data,
+                    &self.fmt, &self.dest_fmt,
+                    <unsigned char *>self.buffers[self.buf.index].start,
+                    self.buf.bytesused,
+                    self.conv_dest,
+                    self.conv_dest_size
+            ):
+                raise CameraError('Conversion failed')
 
         if -1 == xioctl(self.fd, VIDIOC_QBUF, &self.buf):
             raise CameraError('Exchanging buffer with device failed')
